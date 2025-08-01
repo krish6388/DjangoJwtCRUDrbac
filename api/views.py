@@ -22,7 +22,7 @@ from faker import Faker
 def generate_template_view(request):
     return render(request, 'generate_form.html')
 
-
+# api/register/ -> Register a new user, role: Agent(default)
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -49,6 +49,7 @@ class RegisterView(APIView):
             # return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+# Activate the user if clicked on the activation link in logs (Mails can be used in prod env)
 class ActivateUserView(APIView):
     def get(self, request, uidb64, token):
         try:
@@ -65,6 +66,7 @@ class ActivateUserView(APIView):
         else:
             return Response({"error": "Activation link expired or invalid"}, status=400)
 
+# api/login/ -> Logs in a registered user -> Give access token and refresh token
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -90,6 +92,7 @@ class LoginView(APIView):
 #         request.user.auth_token.delete()
 #         return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
 
+# api/product -> Read and Create in Product model -> JWT Auth -> Any role can access
 class ProductListCreateView(generics.ListCreateAPIView):
     
     queryset = Product.objects.all()
@@ -102,6 +105,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied("Only Admin and Staff can upload products.")
         serializer.save(uploaded_by=self.request.user)
 
+# api/product/{id} -> PUT/PATCH/DELETE in Product model -> JWT Auth -> Admin and Staff can access
 class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -113,6 +117,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
             if request.user.role.lower() not in ['admin', 'staff']:
                 raise PermissionDenied("Only Admin or Staff can update or delete a product.")
 
+# api/categories -> Read and Create in Category model -> JWT Auth -> Any role can access read | Only Admin for Create
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -124,6 +129,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied("Only admin can upload categories.")
         serializer.save()  
 
+# api/categories/{id} -> PUT/PATCH/DELETE in Category model -> JWT Auth -> Only Admin can access
 class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -135,6 +141,7 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
             if request.user.role.lower() not in ['admin']:
                 raise PermissionDenied("Only Admin can update or delete a category.")
 
+# api/order -> Read(Only own orders if not admin) and Create new Order -> JWT Auth -> Admin can access all rows of Order 
 class OrderListCreateView(generics.ListCreateAPIView):
     # queryset = Order.objects.filter(
     #     user = 1
@@ -155,7 +162,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
-
+# /generate -> Generate 'count'/1000(default) new rows in Product model -> JWT -> Only Admin can access
 class GenerateDummyProductsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -189,8 +196,7 @@ class GenerateDummyProductsView(APIView):
             ))
         Product.objects.bulk_create(products)
 
-
-
+# /export -> Give a link to download excel sheet of all rows in Product model
 def export_products_excel(request):
     products = Product.objects.select_related('category').all()
     df = pd.DataFrame([
