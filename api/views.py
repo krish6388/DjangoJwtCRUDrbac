@@ -1,3 +1,4 @@
+import threading
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from rest_framework import generics, permissions, status
@@ -163,32 +164,34 @@ class GenerateDummyProductsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        try:
-            if request.user.role not in ['admin']:
-                raise PermissionDenied("Only admin can upload dummy products.")
-            count = int(request.data.get("count", 1000))
-            fake = Faker()
+        if request.user.role != 'admin':
+            raise PermissionDenied("Only admin can upload dummy products.")
 
-            categories = list(Category.objects.all())
-            if not categories:
-                categories = [Category.objects.create(name=fake.word()) for _ in range(5)]
+        count = int(request.data.get("count", 1000))
+        user = request.user  # Store reference since request will not be available in thread
 
-            # admin_user = User.objects.get(id=admin_id)
+        thread = threading.Thread(target=self.generate_products, args=(user, count))
+        thread.start()
 
-            products = []
-            for _ in range(count):
-                products.append(Product(
-                    category=random.choice(categories),
-                    title=fake.catch_phrase(),
-                    description=fake.text(),
-                    price=round(random.uniform(1000, 50000), 2),
-                    uploaded_by=request.user
-                ))
-            Product.objects.bulk_create(products)
+        return Response({"message": f"Started background task to create {count} dummy products."}, status=status.HTTP_202_ACCEPTED)
 
-            return Response({"message": f"{count} dummy products created."}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    def generate_products(self, user, count):
+        fake = Faker()
+
+        categories = list(Category.objects.all())
+        if not categories:
+            categories = [Category.objects.create(name=fake.word()) for _ in range(5)]
+
+        products = []
+        for _ in range(count):
+            products.append(Product(
+                category=random.choice(categories),
+                title=fake.catch_phrase(),
+                description=fake.text(),
+                price=round(random.uniform(1000, 50000), 2),
+                uploaded_by=user
+            ))
+        Product.objects.bulk_create(products)
 
 
 
