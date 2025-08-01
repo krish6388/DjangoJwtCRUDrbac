@@ -217,3 +217,9 @@ def export_products_excel(request):
     response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=products.xlsx'
     return response
+
+# Recursion Example: I wasn't sure if we need to implement it in any API for just a simple code as per requirements
+# def factorial(n):
+#     if n <= 1:
+#         return 1
+#     return n * factorial(n - 1)
