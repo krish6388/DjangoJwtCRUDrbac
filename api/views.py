@@ -14,10 +14,6 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
-# from rest_framework.authtoken.models import Token
-# from django.views.decorators.csrf import csrf_exempt
-# from .tasks import generate_dummy_products
-# from .models import Product
 import pandas as pd
 import io
 import random
@@ -102,8 +98,8 @@ class ProductListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         print(self.request.user.role)
-        if self.request.user.role not in ['admin', 'staff', 'agent']:
-            raise PermissionDenied("Only ['admin', 'staff', 'agent'] can upload products.")
+        if self.request.user.role not in ['admin', 'staff']:
+            raise PermissionDenied("Only Admin and Staff can upload products.")
         serializer.save(uploaded_by=self.request.user)
 
 class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -154,8 +150,8 @@ class OrderListCreateView(generics.ListCreateAPIView):
             return Order.objects.all()
 
     def perform_create(self, serializer):
-        if self.request.user.role != 'buyer':
-            raise PermissionDenied("Only buyers can place orders.")
+        if self.request.user.role != 'agent':
+            raise PermissionDenied("Only agents/buyers can place orders.")
         serializer.save(user=self.request.user)
 
 
